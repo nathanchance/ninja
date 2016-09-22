@@ -328,7 +328,7 @@ if platform.is_msvc():
         cflags += ['/Ox', '/DNDEBUG', '/GL']
         ldflags += ['/LTCG', '/OPT:REF', '/OPT:ICF']
 else:
-    cflags = ['-g', '-Wall', '-Wextra',
+    cflags = ['-g0', '-Wall', '-Wextra',
               '-Wno-deprecated',
               '-Wno-missing-field-initializers',
               '-Wno-unused-parameter',
@@ -337,10 +337,9 @@ else:
               '-fvisibility=hidden', '-pipe',
               '-DNINJA_PYTHON="%s"' % options.with_python]
     if options.debug:
-        cflags += ['-D_GLIBCXX_DEBUG', '-D_GLIBCXX_DEBUG_PEDANTIC']
-        cflags.remove('-fno-rtti')  # Needed for above pedanticness.
+        cflags += ['-O3', '-ffast-math', '-ftree-vectorize', '-march=native', '-mtune=native', '-DNDEBUG']
     else:
-        cflags += ['-O2', '-DNDEBUG']
+        cflags += ['-O3', '-ffast-math', '-ftree-vectorize', '-march=native', '-mtune=native', '-DNDEBUG']
     try:
         proc = subprocess.Popen(
             [CXX, '-fdiagnostics-color', '-c', '-x', 'c++', '/dev/null',
