@@ -38,7 +38,7 @@ genrule {
     tool_file: "src/inline.sh",
 
     srcs: ["src/browse.py"],
-    out: "build/browse_py.h",
+    out: ["build/browse_py.h"],
 }
 
 cc_library_host_static {
