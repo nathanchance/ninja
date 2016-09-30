@@ -21,7 +21,7 @@ cc_defaults {
         "-fno-exceptions",
         "-fvisibility=hidden",
         "-Wno-missing-field-initializers",
-        "-DNINJA_PYTHON=\\\"python\\\"",
+        "-DNINJA_PYTHON=\"python\"",
         "-DNINJA_HAVE_BROWSE",
     ],
     target: {
