@@ -328,18 +328,33 @@ if platform.is_msvc():
         cflags += ['/Ox', '/DNDEBUG', '/GL']
         ldflags += ['/LTCG', '/OPT:REF', '/OPT:ICF']
 else:
-    cflags = ['-g0', '-Wall', '-Wextra',
+    cflags = ['-g0', '-w',
               '-Wno-deprecated',
               '-Wno-missing-field-initializers',
               '-Wno-unused-parameter',
               '-fno-rtti',
               '-fno-exceptions',
               '-fvisibility=hidden', '-pipe',
+              '-mllvm -polly',
+              '-mllvm -polly-parallel',
+              '-mllvm -polly-parallel-force',
+              '-mllvm -polly-ast-use-context',
+              '-mllvm -polly-vectorizer=polly',
+              '-mllvm -polly-opt-fusion=max',
+              '-mllvm -polly-opt-maximize-bands=yes',
+              '-mllvm -polly-run-dce',
+              '-mllvm -polly-dependences-computeout=0',
+              '-mllvm -polly-dependences-analysis-type=value-based',
+              '-mllvm -polly-position=after-loopopt',
+              '-mllvm -polly-run-inliner',
+              '-mllvm -polly-detect-keep-going',
+              '-mllvm -polly-rtc-max-arrays-per-group=40',
+              '-mllvm -polly-register-tiling',
               '-DNINJA_PYTHON="%s"' % options.with_python]
     if options.debug:
-        cflags += ['-O3', '-ffast-math', '-ftree-vectorize', '-march=native', '-mtune=native', '-DNDEBUG']
+        cflags += ['-Ofast', '-ffast-math', '-ftree-vectorize', '-march=native', '-mtune=native', '-DNDEBUG']
     else:
-        cflags += ['-O3', '-ffast-math', '-ftree-vectorize', '-march=native', '-mtune=native', '-DNDEBUG']
+        cflags += ['-Ofast', '-ffast-math', '-ftree-vectorize', '-march=native', '-mtune=native', '-DNDEBUG']
     try:
         proc = subprocess.Popen(
             [CXX, '-fdiagnostics-color', '-c', '-x', 'c++', '/dev/null',
