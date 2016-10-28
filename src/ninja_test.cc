@@ -18,6 +18,9 @@
 
 #ifdef _WIN32
 #include "getopt.h"
+#elif defined(_AIX)
+#include "getopt.h"
+#include <unistd.h>
 #else
 #include <getopt.h>
 #endif
