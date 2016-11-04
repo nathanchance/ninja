@@ -35,8 +35,8 @@ cc_defaults {
 genrule {
     name: "ninja_browse_py",
 
-    cmd: "$tool kBrowsePy <$in >$out",
-    tool_file: "src/inline.sh",
+    cmd: "$(location src/inline.sh) kBrowsePy <$(in) >$(out)",
+    tool_files: ["src/inline.sh"],
 
     srcs: ["src/browse.py"],
     out: ["build/browse_py.h"],
