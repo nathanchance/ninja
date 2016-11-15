@@ -24,6 +24,7 @@
 
 #include "graph.h"  // XXX needed for DependencyScan; should rearrange.
 #include "exit_status.h"
+#include "serialize.h"
 #include "util.h"  // int64_t
 
 struct BuildLog;
@@ -123,7 +124,7 @@ struct CommandRunner {
 struct BuildConfig {
   BuildConfig() : verbosity(NORMAL), dry_run(false), parallelism(1),
                   failures_allowed(1), max_load_average(-0.0f),
-                  start_time_millis_(GetTimeMillis()) {}
+                  frontend(NULL) {}
 
   enum Verbosity {
     NORMAL,
@@ -138,8 +139,8 @@ struct BuildConfig {
   /// means that we do not have any limit.
   double max_load_average;
 
-  // Time the build started.
-  int64_t start_time_millis_;
+  /// Command to execute to handle build output
+  const char* frontend;
 };
 
 /// Builder wraps the build process: starting commands, updating status.

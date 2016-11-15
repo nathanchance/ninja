@@ -14,8 +14,12 @@
 
 #include "status.h"
 
+#include <errno.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 StatusPrinter::StatusPrinter(const BuildConfig& config)
     : config_(config),
@@ -49,7 +53,7 @@ void StatusPrinter::BuildEdgeStarted(Edge* edge, int64_t start_time_millis) {
 }
 
 void StatusPrinter::BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
-                                      bool success, const string& output) {
+                                      const CommandRunner::Result* result) {
   time_millis_ = end_time_millis;
   ++finished_edges_;
 
@@ -65,7 +69,7 @@ void StatusPrinter::BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
   --running_edges_;
 
   // Print the command that is spewing before printing its output.
-  if (!success) {
+  if (!result->success()) {
     string outputs;
     for (vector<Node*>::const_iterator o = edge->outputs_.begin();
          o != edge->outputs_.end(); ++o)
@@ -75,7 +79,7 @@ void StatusPrinter::BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
     printer_.PrintOnNewLine(edge->EvaluateCommand() + "\n");
   }
 
-  if (!output.empty()) {
+  if (!result->output.empty()) {
     // ninja sets stdout and stderr of subprocesses to a pipe, to be able to
     // check if the output is empty. Some compilers, e.g. clang, check
     // isatty(stderr) to decide if they should print colored output.
@@ -90,9 +94,9 @@ void StatusPrinter::BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
     // TODO: There should be a flag to disable escape code stripping.
     string final_output;
     if (!printer_.is_smart_terminal())
-      final_output = StripAnsiEscapeCodes(output);
+      final_output = StripAnsiEscapeCodes(result->output);
     else
-      final_output = output;
+      final_output = result->output;
     printer_.PrintOnNewLine(final_output);
   }
 }
@@ -227,3 +231,122 @@ void StatusPrinter::Info(const char* msg, ...) {
   ::Info(msg, ap);
   va_end(ap);
 }
+
+#ifndef _WIN32
+
+StatusSerializer::StatusSerializer(const BuildConfig& config) :
+    config_(config), serializer_(NULL), subprocess_(NULL) {
+  int output_pipe[2];
+  if (pipe(output_pipe) < 0)
+    Fatal("pipe: %s", strerror(errno));
+  SetCloseOnExec(output_pipe[1]);
+
+  serializer_ = new Serializer(output_pipe[1]);
+
+  subprocess_ = subprocess_set_.Add(config.frontend, /*use_console=*/true,
+                                    output_pipe[0]);
+  close(output_pipe[0]);
+
+  serializer_->Uint(kHeader);
+}
+
+StatusSerializer::~StatusSerializer() {
+  serializer_->Flush();
+  delete serializer_;
+  subprocess_->Finish();
+  subprocess_set_.Clear();
+}
+
+void StatusSerializer::PlanHasTotalEdges(int total) {
+  serializer_->Array(2);
+  serializer_->Uint(kTotalEdges);
+  serializer_->Uint(total);
+  serializer_->Flush();
+}
+
+void StatusSerializer::BuildEdgeStarted(Edge* edge, int64_t start_time_millis) {
+  serializer_->Array(8);
+  serializer_->Uint(kEdgeStarted);
+  serializer_->Uint(edge->id_);
+  serializer_->Uint(start_time_millis);
+  serializer_->Array(edge->inputs_.size());
+  for (vector<Node*>::iterator it = edge->inputs_.begin(); it != edge->inputs_.end(); ++it) {
+    serializer_->String((*it)->path());
+  }
+  serializer_->Array(edge->outputs_.size());
+  for (vector<Node*>::iterator it = edge->outputs_.begin(); it != edge->outputs_.end(); ++it) {
+    serializer_->String((*it)->path());
+  }
+  serializer_->String(edge->GetBinding("description"));
+  serializer_->String(edge->GetBinding("command"));
+  serializer_->Bool(edge->use_console());
+  serializer_->Flush();
+}
+
+void StatusSerializer::BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
+                                         const CommandRunner::Result* result) {
+  serializer_->Array(5);
+  serializer_->Uint(kEdgeFinished);
+  serializer_->Uint(edge->id_);
+  serializer_->Uint(end_time_millis);
+  serializer_->Int(result->status);
+  serializer_->String(result->output);
+  serializer_->Flush();
+}
+
+void StatusSerializer::BuildStarted() {
+  serializer_->Array(3);
+  serializer_->Uint(kBuildStarted);
+  serializer_->Uint(config_.parallelism);
+  serializer_->Bool(config_.verbosity == BuildConfig::VERBOSE);
+}
+
+void StatusSerializer::BuildFinished() {
+  serializer_->Array(1);
+  serializer_->Uint(kBuildFinished);
+}
+
+void StatusSerializer::Message(messageType type, const char* msg,
+                    va_list ap) {
+  va_list ap2;
+  va_copy(ap2, ap);
+
+  int len = vsnprintf(NULL, 0, msg, ap2);
+  if (len < 0) {
+    Fatal("vsnprintf failed");
+  }
+
+  va_end(ap2);
+
+  char* buf = new char[len + 1];
+  buf[0] = 0;
+  vsnprintf(buf, len + 1, msg, ap);
+  buf[len] = 0;
+
+  serializer_->Array(2);
+  serializer_->Uint(type);
+  serializer_->String(buf);
+  serializer_->Flush();
+}
+
+void StatusSerializer::Info(const char* msg, ...) {
+  va_list ap;
+  va_start(ap, msg);
+  Message(kNinjaInfo, msg, ap);
+  va_end(ap);
+}
+
+void StatusSerializer::Warning(const char* msg, ...) {
+  va_list ap;
+  va_start(ap, msg);
+  Message(kNinjaWarning, msg, ap);
+  va_end(ap);
+}
+
+void StatusSerializer::Error(const char* msg, ...) {
+  va_list ap;
+  va_start(ap, msg);
+  Message(kNinjaError, msg, ap);
+  va_end(ap);
+}
+#endif // !_WIN32

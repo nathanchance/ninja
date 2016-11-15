@@ -15,12 +15,15 @@
 #ifndef NINJA_STATUS_H_
 #define NINJA_STATUS_H_
 
+#include <stdarg.h>
+
 #include <map>
 #include <string>
 using namespace std;
 
 #include "build.h"
 #include "line_printer.h"
+#include "subprocess.h"
 
 /// Abstract interface to object that tracks the status of a build:
 /// completion fraction, printing updates.
@@ -28,7 +31,7 @@ struct Status {
   virtual void PlanHasTotalEdges(int total) = 0;
   virtual void BuildEdgeStarted(Edge* edge, int64_t start_time_millis) = 0;
   virtual void BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
-                                 bool success, const string& output) = 0;
+                                 const CommandRunner::Result* result) = 0;
   virtual void BuildStarted() = 0;
   virtual void BuildFinished() = 0;
 
@@ -46,7 +49,7 @@ struct StatusPrinter : Status {
   virtual void PlanHasTotalEdges(int total);
   virtual void BuildEdgeStarted(Edge* edge, int64_t start_time_millis);
   virtual void BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
-                                 bool success, const string& output);
+                                 const CommandRunner::Result* result);
   virtual void BuildStarted();
   virtual void BuildFinished();
 
@@ -112,5 +115,47 @@ struct StatusPrinter : Status {
 
   mutable SlidingRateInfo current_rate_;
 };
+
+#ifndef _WIN32
+
+/// Implementation of the Status interface that serializes the status as
+/// MessagePack objects to stdout
+struct StatusSerializer : Status {
+  explicit StatusSerializer(const BuildConfig& config);
+  virtual ~StatusSerializer();
+
+  virtual void PlanHasTotalEdges(int total);
+  virtual void BuildEdgeStarted(Edge* edge, int64_t start_time);
+  virtual void BuildEdgeFinished(Edge* edge, int64_t end_time_millis,
+                                 const CommandRunner::Result* result);
+  virtual void BuildStarted();
+  virtual void BuildFinished();
+
+  virtual void Info(const char* msg, ...);
+  virtual void Warning(const char* msg, ...);
+  virtual void Error(const char* msg, ...);
+
+  enum messageType {
+    kHeader          = 0x4e4a5331, // NJS1
+    kTotalEdges      = 0,
+    kBuildStarted    = 1,
+    kBuildFinished   = 2,
+    kEdgeStarted     = 3,
+    kEdgeFinished    = 4,
+    kNinjaInfo       = 5,
+    kNinjaWarning    = 6,
+    kNinjaError      = 7,
+  };
+
+  const BuildConfig& config_;
+
+  Serializer* serializer_;
+  SubprocessSet subprocess_set_;
+  Subprocess* subprocess_;
+private:
+  void Message(messageType type, const char* msg, va_list ap);
+};
+
+#endif // !_WIN32
 
 #endif // NINJA_STATUS_H_
