@@ -487,26 +487,8 @@ bool islatinalpha(int c) {
 }
 
 string StripAnsiEscapeCodes(const string& in) {
-  string stripped;
-  stripped.reserve(in.size());
-
-  for (size_t i = 0; i < in.size(); ++i) {
-    if (in[i] != '\33') {
-      // Not an escape code.
-      stripped.push_back(in[i]);
-      continue;
-    }
-
-    // Only strip CSIs for now.
-    if (i + 1 >= in.size()) break;
-    if (in[i + 1] != '[') continue;  // Not a CSI.
-    i += 2;
-
-    // Skip everything up to and including the next [a-zA-Z].
-    while (i < in.size() && !islatinalpha(in[i]))
-      ++i;
-  }
-  return stripped;
+  // We love color
+  return in;
 }
 
 int GetProcessorCount() {

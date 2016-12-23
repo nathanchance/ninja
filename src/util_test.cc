@@ -381,10 +381,10 @@ TEST(PathEscaping, SensibleWin32PathsAreNotNeedlesslyEscaped) {
 
 TEST(StripAnsiEscapeCodes, EscapeAtEnd) {
   string stripped = StripAnsiEscapeCodes("foo\33");
-  EXPECT_EQ("foo", stripped);
+  EXPECT_EQ("foo\33", stripped);
 
   stripped = StripAnsiEscapeCodes("foo\33[");
-  EXPECT_EQ("foo", stripped);
+  EXPECT_EQ("foo\33[", stripped);
 }
 
 TEST(StripAnsiEscapeCodes, StripColors) {
