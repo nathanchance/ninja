@@ -337,7 +337,6 @@ else:
               '-fvisibility=hidden', '-pipe',
               '-mllvm -polly',
               '-mllvm -polly-parallel',
-              '-mllvm -polly-parallel-force',
               '-mllvm -polly-ast-use-context',
               '-mllvm -polly-vectorizer=polly',
               '-mllvm -polly-opt-fusion=max',
