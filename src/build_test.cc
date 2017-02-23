@@ -458,7 +458,7 @@ struct FakeCommandRunner : public CommandRunner {
 
 struct BuildTest : public StateTestWithBuiltinRules, public BuildLogUser {
   BuildTest() : config_(MakeConfig()), command_runner_(&fs_),
-                builder_(&state_, config_, NULL, NULL, &fs_, &status_, 0),
+                builder_(&state_, config_, NULL, &deps_log_, &fs_, &status_, 0),
                 status_(config_) {
   }
 
@@ -500,6 +500,7 @@ struct BuildTest : public StateTestWithBuiltinRules, public BuildLogUser {
   BuildConfig config_;
   FakeCommandRunner command_runner_;
   VirtualFileSystem fs_;
+  DepsLog deps_log_;
   Builder builder_;
 
   StatusPrinter status_;
@@ -1958,7 +1959,8 @@ TEST_F(BuildWithDepsLogTest, DepsIgnoredInDryRun) {
 
   // The deps log is NULL in dry runs.
   config_.dry_run = true;
-  Builder builder(&state, config_, NULL, NULL, &fs_, &status_, 0);
+  DepsLog deps_log;
+  Builder builder(&state, config_, NULL, &deps_log, &fs_, &status_, 0);
   builder.command_runner_.reset(&command_runner_);
   command_runner_.commands_ran_.clear();
 
