@@ -343,12 +343,10 @@ else:
               '-mllvm -polly-opt-maximize-bands=yes',
               '-mllvm -polly-run-dce',
               '-mllvm -polly-dependences-computeout=0',
-              '-mllvm -polly-dependences-analysis-type=value-based',
               '-mllvm -polly-position=after-loopopt',
               '-mllvm -polly-run-inliner',
               '-mllvm -polly-detect-keep-going',
               '-mllvm -polly-rtc-max-arrays-per-group=40',
-              '-mllvm -polly-register-tiling',
               '-DNINJA_PYTHON="%s"' % options.with_python]
     if options.debug:
         cflags += ['-Ofast', '-ffast-math', '-ftree-vectorize', '-march=native', '-mtune=native', '-DNDEBUG']
