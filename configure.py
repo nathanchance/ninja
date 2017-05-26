@@ -335,19 +335,7 @@ else:
               '-fno-rtti',
               '-fno-exceptions',
               '-fvisibility=hidden', '-pipe',
-              '-mllvm -polly',
               '-lgomp',
-              '-mllvm -polly-parallel',
-              '-mllvm -polly-ast-use-context',
-              '-mllvm -polly-vectorizer=polly',
-              '-mllvm -polly-opt-fusion=max',
-              '-mllvm -polly-opt-maximize-bands=yes',
-              '-mllvm -polly-run-dce',
-              '-mllvm -polly-dependences-computeout=0',
-              '-mllvm -polly-position=after-loopopt',
-              '-mllvm -polly-run-inliner',
-              '-mllvm -polly-detect-keep-going',
-              '-mllvm -polly-rtc-max-arrays-per-group=40',
               '-DNINJA_PYTHON="%s"' % options.with_python]
     if options.debug:
         cflags += ['-Ofast', '-ffast-math', '-ftree-vectorize', '-march=native', '-mtune=native', '-DNDEBUG']
